@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #f1f5f9; /* Slate 100 light background */
+    color: #0f172a; /* Slate 900 text */
+    -webkit-tap-highlight-color: transparent;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+/* Custom utility for touch targets >= 48px */
+.touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Hide scrollbar for clean mobile view */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
