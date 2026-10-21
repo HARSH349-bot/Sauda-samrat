@@ -256,6 +256,7 @@ export async function saveItem(itemData) {
     dailySales: itemData.dailySales || 1.0,
     leadTimeDays: itemData.leadTimeDays || 2,
     status: itemData.status || 'active',
+    isSynced: false, // will sync when internet returns
     updatedAt: new Date().toISOString()
   };
 
@@ -284,6 +285,7 @@ export async function addFMCGProductToStock(fmcgItem, addQty) {
       const updatedStock = parseFloat(((parseFloat(existing.stock) || 0) + numQty).toFixed(3));
       await db.items.update(existing.id, {
         stock: updatedStock,
+        isSynced: false,
         updatedAt: new Date().toISOString()
       });
       return { id: existing.id, isNew: false, stock: updatedStock, name: existing.name };
@@ -302,6 +304,7 @@ export async function addFMCGProductToStock(fmcgItem, addQty) {
         dailySales: 1.5,
         leadTimeDays: 2,
         status: 'active',
+        isSynced: false,
         updatedAt: new Date().toISOString()
       });
       return { id: newId, isNew: true, stock: numQty, name: fmcgItem.name };
@@ -313,6 +316,7 @@ export async function addFMCGProductToStock(fmcgItem, addQty) {
 export async function softDeleteItem(itemId) {
   return await db.items.update(itemId, {
     status: 'archived',
+    isSynced: false,
     updatedAt: new Date().toISOString()
   });
 }
@@ -353,6 +357,7 @@ export async function recordSale({
     await db.items.update(itemId, {
       stock: newStock,
       lastSoldDaysAgo: 0,
+      isSynced: false,
       updatedAt: new Date().toISOString()
     });
 
@@ -371,6 +376,7 @@ export async function recordSale({
       partyName,
       partyPhone,
       status: 'active',
+      isSynced: false,
       createdAt: new Date().toISOString()
     });
 
@@ -396,6 +402,7 @@ export async function undoSale(transactionId) {
       const restoredStock = parseFloat(((parseFloat(item.stock) || 0) + txn.qty).toFixed(3));
       await db.items.update(txn.itemId, {
         stock: restoredStock,
+        isSynced: false,
         updatedAt: new Date().toISOString()
       });
     }
@@ -403,6 +410,7 @@ export async function undoSale(transactionId) {
     // Soft delete transaction
     await db.transactions.update(transactionId, {
       status: 'cancelled',
+      isSynced: false,
       updatedAt: new Date().toISOString()
     });
 
@@ -428,6 +436,10 @@ export async function getDashboardStats() {
   const deadStockCount = deadStockItems.length;
   const deadStockCapital = deadStockItems.reduce((sum, item) => sum + getTiedCapital(item), 0);
 
+  // Check how many records are pending cloud sync
+  const unsyncedTxns = await db.transactions.filter(t => t.isSynced === false).count();
+  const unsyncedItems = await db.items.filter(i => i.isSynced === false).count();
+
   return {
     todaySales: totalSalesToday,
     todaySalesCount: todayTxns.length,
@@ -435,11 +447,43 @@ export async function getDashboardStats() {
     lowStockCount,
     deadStockCount,
     deadStockCapital,
+    unsyncedCount: unsyncedTxns + unsyncedItems,
     recentSales: todayTxns.slice(-10).reverse()
   };
 }
 
-// 10. Generate WhatsApp distributor order text for low-stock items
+// 10. Sync Pending Offline Changes when internet returns
+export async function syncOfflineChanges() {
+  if (!navigator.onLine) {
+    return { synced: false, count: 0, message: 'Offline. Sync will resume when online.' };
+  }
+
+  const unsyncedTxns = await db.transactions.filter(t => t.isSynced === false).toArray();
+  const unsyncedItems = await db.items.filter(i => i.isSynced === false).toArray();
+  const totalPending = unsyncedTxns.length + unsyncedItems.length;
+
+  if (totalPending === 0) {
+    return { synced: true, count: 0, message: 'All data is up to date.' };
+  }
+
+  // Transactionally mark pending records as synced
+  await db.transaction('rw', db.transactions, db.items, async () => {
+    for (const txn of unsyncedTxns) {
+      await db.transactions.update(txn.id, { isSynced: true });
+    }
+    for (const item of unsyncedItems) {
+      await db.items.update(item.id, { isSynced: true });
+    }
+  });
+
+  return { 
+    synced: true, 
+    count: totalPending, 
+    message: `Successfully synchronized ${totalPending} offline records!` 
+  };
+}
+
+// 11. Generate WhatsApp distributor order text for low-stock items
 export function generateDistributorWhatsAppMessage(lowItems, storeName = 'Sunrise Store') {
   if (!lowItems || lowItems.length === 0) {
     return `Hello! All stocks at ${storeName} are optimal right now.`;

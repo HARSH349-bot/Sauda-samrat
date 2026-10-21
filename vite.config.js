@@ -5,13 +5,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './', // Ensures relative asset paths on GitHub Pages, Vercel, Netlify, and custom domains
+  base: './', // Ensures relative asset paths across GitHub Pages, localhost, and custom domains
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      injectRegister: 'auto',
+      includeAssets: ['favicon.svg', 'icons.svg'],
       manifest: {
         name: 'Sauda Samrat (सौदा सम्राट)',
         short_name: 'Sauda Samrat',
@@ -22,14 +23,33 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
+            src: 'favicon.svg',
+            sizes: '192x192 512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,json,webmanifest}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        navigateFallback: 'index.html',
+        runtimeCaching: [
           {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
+            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
           }
         ]
       }

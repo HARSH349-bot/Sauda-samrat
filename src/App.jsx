@@ -5,7 +5,8 @@ import {
   getActiveItems, 
   getLowStockItems, 
   getDeadStockItems, 
-  getDashboardStats 
+  getDashboardStats, 
+  syncOfflineChanges 
 } from './services/inventoryService';
 import { Header, BottomNav } from './components/Navigation';
 import { DashboardPage } from './pages/DashboardPage';
@@ -15,11 +16,14 @@ import { SettingsPage } from './pages/SettingsPage';
 import { QuickSaleModal } from './components/QuickSaleModal';
 import { AddEditItemModal } from './components/AddEditItemModal';
 import { FMCGCatalogModal } from './components/FMCGCatalogModal';
+import { CheckCircle2, Wifi, WifiOff } from 'lucide-react';
 
 export default function App() {
   const [lang, setLang] = useState('en');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [shopName, setShopName] = useState('Sunrise Store');
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [syncToast, setSyncToast] = useState('');
   const [items, setItems] = useState([]);
   const [lowStockItems, setLowStockItems] = useState([]);
   const [deadStockItems, setDeadStockItems] = useState([]);
@@ -32,6 +36,7 @@ export default function App() {
     lowStockCount: 0,
     deadStockCount: 0,
     deadStockCapital: 0,
+    unsyncedCount: 0,
     recentSales: []
   });
 
@@ -67,9 +72,34 @@ export default function App() {
     }
   };
 
+  // Automatic internet connectivity listeners & auto-sync when online returns
   useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      const res = await syncOfflineChanges();
+      if (res.synced && res.count > 0) {
+        setSyncToast(lang === 'hi' ? `इंटरनेट वापस आया! ${res.count} रिकॉर्ड ऑटो-सिंक हुए।` : `Back online! Auto-synced ${res.count} records.`);
+        setTimeout(() => setSyncToast(''), 3500);
+      }
+      refreshData();
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      setSyncToast(lang === 'hi' ? 'ऑफलाइन मोड सक्रिय। सारा डेटा डिवाइस में सुरक्षित है।' : 'Offline mode active. All data is saved safely in IndexedDB.');
+      setTimeout(() => setSyncToast(''), 3500);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     refreshData();
-  }, []);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [lang]);
 
   const navigateToInventoryFilter = (filter) => {
     setInventoryInitialFilter(filter);
@@ -81,13 +111,39 @@ export default function App() {
       {/* Mobile Frame Container max-w-md matching the white & navy blue theme */}
       <div className="w-full max-w-md min-h-screen bg-slate-50 flex flex-col relative shadow-xl border-x border-slate-200">
         
+        {/* Dynamic Network / Sync Toast Notification */}
+        {syncToast && (
+          <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-xs w-full px-4 animate-in fade-in slide-in-from-top duration-300">
+            <div className={`p-3 rounded-2xl shadow-xl flex items-center justify-between text-xs font-semibold text-white ${
+              isOnline ? 'bg-emerald-600' : 'bg-slate-900 border border-slate-700'
+            }`}>
+              <div className="flex items-center gap-2">
+                {isOnline ? <Wifi className="w-4 h-4 text-emerald-200" /> : <WifiOff className="w-4 h-4 text-amber-400" />}
+                <span>{syncToast}</span>
+              </div>
+              <button onClick={() => setSyncToast('')} className="p-1 hover:opacity-80">✕</button>
+            </div>
+          </div>
+        )}
+
         {/* Top Header */}
         <Header 
           lang={lang} 
           setLang={setLang} 
           t={t} 
           shopName={shopName} 
-          onRefresh={refreshData}
+          isOnline={isOnline}
+          unsyncedCount={stats.unsyncedCount}
+          onRefresh={async () => {
+            if (isOnline) {
+              const res = await syncOfflineChanges();
+              if (res.synced && res.count > 0) {
+                setSyncToast(lang === 'hi' ? `${res.count} रिकॉर्ड सिंक हुए!` : `Synced ${res.count} records!`);
+                setTimeout(() => setSyncToast(''), 2500);
+              }
+            }
+            refreshData();
+          }}
         />
 
         {/* Content Body */}
