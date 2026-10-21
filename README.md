@@ -7,7 +7,10 @@
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4.3-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Dexie.js](https://img.shields.io/badge/Dexie.js-IndexedDB-007ACC?logo=javascript&logoColor=white)](https://dexie.com/)
 [![PWA](https://img.shields.io/badge/PWA-100%25_Offline-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-brightgreen?logo=github&logoColor=white)](https://harsh349-bot.github.io/Sauda-samrat/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+🌐 **Live Demo URL:** [https://harsh349-bot.github.io/Sauda-samrat/](https://harsh349-bot.github.io/Sauda-samrat/)
 
 ---
 
