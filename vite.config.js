@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './', // Ensures relative asset paths on GitHub Pages, Vercel, Netlify, and custom domains
   plugins: [
     react(),
     tailwindcss(),
@@ -15,7 +16,7 @@ export default defineConfig({
         name: 'Sauda Samrat (सौदा सम्राट)',
         short_name: 'Sauda Samrat',
         description: 'Offline-first, Hindi-first Inventory & POS for Indian Retailers',
-        theme_color: '#0f172a',
+        theme_color: '#2563eb',
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
